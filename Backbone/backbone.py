@@ -14,10 +14,16 @@ class BackboneFactory(tf.keras.layers.Layer):
     def __init__(self):
         pass
 
+    '''
+    ## getBackbone parameters
+    config = {
+        'backbone_type' : '..'
+        'input_shape' : (width, height, chanels)
+    } '''
     @staticmethod
-    def getBackbone(self, backbone_type, input_shape):
-        input_tensor = tf.keras.layers.Input(shape=input_shape)
-        if backbone_type == 'backbone_1':
+    def getBackbone(self, config):
+        input_tensor = tf.keras.layers.Input(shape=config['input_shape'])
+        if config['backbone_type'] == 'backbone_1':
             output = BiLSTM(include_top=False)(input_tensor)
         # elif backbone_type == 'backbone_1':
         #     output = BiLSTM(include_top=False)(input_tensor)

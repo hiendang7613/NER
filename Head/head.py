@@ -14,15 +14,21 @@ class HeadFactory(tf.keras.layers.Layer):
     def __init__(self):
         pass
 
+    '''
+    ## getHead parameters
+    config = {
+        'head_type' : head_type
+        'num_classes' : num_classes
+    }'''
     @staticmethod
-    def getHead(self, head_type, input_shape):
+    def getHead(self, config):
         head = None
-        if head_type == 'head_1':
-            head = BiLSTM(include_top=False)
+        # if config['head_type'] == 'head_1':
+        #     head = BiLSTM(include_top=False) config['headConfig']
         # elif backbone_type == 'backbone_1':
         #     output = BiLSTM(include_top=False)(input_tensor)
-        else:
-            print('Head type not match!')
+        # else:
+        #     print('Head type not match!')
         return head
 
 

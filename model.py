@@ -17,10 +17,21 @@ class ModelFactory(object):
     def __init__(self):
         pass
 
-    def getModel(self, name):
-
-    def getModel(self, backbone_type, head_type, input_shape):
-        backbone = BackboneFactory.getBackbone(backbone_type, input_shape)
+    '''
+    ## getModel parameters
+    modelConfig = {
+        'backbone_type': backbone_type,
+        'input_shape' : (width, height, chanels)
+        'head_type' : head_type,
+        'num_classes' : num_classes
+    }'''
+    @staticmethod
+    def getModel(self, modelConfig backbone_type, head_type, input_shape):
+        backboneConfig = {
+            'backbone_type':
+            'input_shape':
+        }
+        backbone = BackboneFactory.getBackbone(config={'modelConfig'})
         head = HeadFactory.getHead(head_type)
         model = MyModel(backbone, head)
         return model

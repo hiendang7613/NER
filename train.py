@@ -27,11 +27,10 @@ def train(mlrun):
     training_dir = train_config.training_dir
     export_dir = train_config.export_dir
 
-    modelFactory = ModelFactory
-    # Model
-    type_backbone = 'Resnet_tf'
+    backbone_type = ''
+    head_type = ''
+    model = ModelFactory.getModel(backbone_type, head_type)
 
-    modelFactory()
 
     archead = ArcHead(num_classes=num_classes)
     model = MyModel(type_backbone=type_backbone,
