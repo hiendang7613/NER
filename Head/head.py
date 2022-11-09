@@ -1,17 +1,19 @@
 import tensorflow as tf
 
-from Backbone.LSTM import BiLSTM
+from Backbone.RNN import BiLSTM
 
 class Head(tf.keras.layers.Layer):
-    def __init__(self):
+    def __init__(self, **kwargs):
+        super(Head, self).__init__(**kwargs)
         pass
 
     def call(self, inputs, training=False) -> tf.Tensor:
         pass
 
 
-class HeadFactory(tf.keras.layers.Layer):
+class HeadFactory(object):
     def __init__(self):
+        super(HeadFactory, self).__init__()
         pass
 
     '''
@@ -23,8 +25,8 @@ class HeadFactory(tf.keras.layers.Layer):
     @staticmethod
     def getHead(self, config):
         head = None
-        # if config['head_type'] == 'head_1':
-        #     head = BiLSTM(include_top=False) config['headConfig']
+        # if head_type == 'head_1':  ### num_classes
+        #     head = BiLSTM(include_top=False)
         # elif backbone_type == 'backbone_1':
         #     output = BiLSTM(include_top=False)(input_tensor)
         # else:

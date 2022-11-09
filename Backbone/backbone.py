@@ -1,34 +1,39 @@
 import tensorflow as tf
+from Config import train_config
 
-from Backbone.LSTM import BiLSTM
+from Backbone.RNN import BiLSTM
 
 class Backbone(tf.keras.layers.Layer):
-    def __init__(self):
+    def __init__(self, **kwargs):
+        super(Backbone, self).__init__(**kwargs)
         pass
 
     def call(self, inputs, training=False) -> tf.Tensor:
         pass
 
 
-class BackboneFactory(tf.keras.layers.Layer):
+class BackboneFactory(object):
     def __init__(self):
+        super(BackboneFactory, self).__init__()
         pass
 
     '''
     ## getBackbone parameters
-    config = {
-        'backbone_type' : '..'
+        'backbone_type' 
         'input_shape' : (width, height, chanels)
-    } '''
+        'embedding_size'
+    '''
     @staticmethod
-    def getBackbone(self, config):
-        input_tensor = tf.keras.layers.Input(shape=config['input_shape'])
-        if config['backbone_type'] == 'backbone_1':
-            output = BiLSTM(include_top=False)(input_tensor)
+    def getBackbone(self, backbone_type, embedding, input_shape=train_config.input_shape, embedding_size=train_config.embedding_size):
+        input_tensor = tf.keras.layers.Input(shape=input_shape)
+        x = embedding(input_tensor)
+        if backbone_type == 'BiLSTM':
+            output = BiLSTM(embedding_size)(x)
         # elif backbone_type == 'backbone_1':
         #     output = BiLSTM(include_top=False)(input_tensor)
         backbone = tf.keras.Model(input_tensor, output)
-        return backbone
+        # output = tf.keras.layers.Dense(embedding_size)(backbone.output)
+        return backbone.output
 
 
 # if __name__ == '__main__':

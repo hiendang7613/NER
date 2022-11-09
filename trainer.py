@@ -1,129 +1,286 @@
+from datetime import datetime
+import logging
+import os.path
 
 import mlflow
 import tensorflow as tf
-import argparse
-from Network.model import MyModel
-from Network.head.archead import ArcHead
-from Tensorflow.TFRecord.tfrecord import TFRecordData
-from training_supervisor import TrainingSupervisor
-from LossFunction.losses import CosfaceLoss
-from evalute import EvaluteObjects
-from config import train_config, mlflow_config
-from utlis.utlis import set_env_vars
+from tqdm import tqdm
+from Config import train_config
 
 
-def parser_mlflow():
-    return dict({
-        'experiment_name': mlflow_config.experiment_name,
-        'run_name_model_type': mlflow_config.run_name_model_type,
-        'model_name': mlflow_config.model_name,
-        'mlflow_autolog': mlflow_config.mlflow_autolog,
-        'tensorflow_autolog': mlflow_config.tensorflow_autolog,
-        'mlflow_custom_log': mlflow_config.mlflow_custom_log,
-        'user_name': mlflow_config.user_name,
-    })
+class Trainer(object):
 
+    def __init__(self,
+                 train_dataloader,
+                 validation_dataloader,
+                 optimizer,
+                 loss_fn,
+                 model,
+                 monitor = train_config.monitor,
+                 mode = train_config.mode,
+                 training_dir = train_config.training_dir,
+                 export_dir = train_config.export_dir,
+                 checkpoint_steps_num = train_config.checkpoint_steps_num,
+                 name = train_config.trainer_name):
+        super(Trainer, self).__init__()
+        # dataloader
+        self.train_dataloader = train_dataloader
+        self.datatrain_generator = iter(self.train_dataloader)
+        self.validate_dataloader = validation_dataloader
+        # model
+        self.optimizer = optimizer
+        self.loss_fn = loss_fn
+        self.model = model
+        #
+        self.checkpoint_steps_num = checkpoint_steps_num
+        # Setup metrics
+        self.metrics = {
+            'categorical_accuracy': tf.keras.metrics.CategoricalAccuracy(name='train_accuracy', dtype=tf.float32),
+            'loss': tf.keras.metrics.Mean(name="train_loss_mean", dtype=tf.float32)
+        }
+        self.monitor = self.metrics[monitor]
+        self.mode = mode
 
-def train(run, model_name, mlflow_custom_log):
+        self.schedule = {
+            'step': tf.Variable(0, trainable=False, dtype=tf.int64),
+            'epoch': tf.Variable(1, trainable=False, dtype=tf.int64),
+            'monitor_value': tf.Variable(0, trainable=False, dtype=tf.float32)
+        }
 
-    # get hyper-parameter
-    tfrecord_file = train_config.tfrecord_file
-    tfrecord_file_eval = train_config.tfrecord_file_eval
-    file_pair_eval = train_config.file_pair_eval
-    num_classes = train_config.num_classes
-    num_images = train_config.num_images
-    embedding_size = train_config.embedding_size
-    batch_size = train_config.batch_size
-    epochs = train_config.epochs
-    input_shape = train_config.input_shape
-    training_dir = train_config.training_dir
-    export_dir = train_config.export_dir
+        # checkpoint-scout
+        self.checkpoint_scout = tf.train.Checkpoint(
+            model=self.model,
+            optimizer=self.optimizer,
+            metrics=self.metrics,
+            schedule=self.schedule,
+            monitor=self.monitor,
+        )
 
-    # Model
-    type_backbone = 'Resnet_tf'
+        # checkpoint-manager
+        self.checkpoint_manager = tf.train.Checkpoint(
+            model=self.model,
+            optimizer=self.optimizer,
+            metrics=self.metrics,
+            schedule=self.schedule,
+            monitor=self.monitor,
+        )
 
-    archead = ArcHead(num_classes=num_classes)
-    model = MyModel(type_backbone=type_backbone,
-                    input_shape=input_shape,
-                    embedding_size=embedding_size,
-                    header=archead)
-    model.build(input_shape=(None, input_shape, input_shape, 3))
-    optimizer = tf.keras.optimizers.Adam(0.001, amsgrad=True, epsilon=0.001)
-    model.summary()
+        # A model manager is responsible for saving the current training
+        # schedule and the model weights.
+        self.manager = tf.train.CheckpointManager(
+            self.checkpoint_manager,
+            os.path.join(training_dir, "checkpoints", name),
+            max_to_keep=5
+        )
 
-    # init loss function
-    loss_fn = CosfaceLoss(margin=0.5, scale=64, n_classes=num_classes)
+        # A model scout watches and saves the best model according to the
+        # monitor value.
+        self.scout = tf.train.CheckpointManager(
+            self.checkpoint_scout,
+            os.path.join(training_dir, 'model_scout', name),
+            max_to_keep=1
+        )
 
-    # dataloader
-    dataloader_train = TFRecordData.load(record_name=tfrecord_file,
-                                         shuffle=True,
-                                         batch_size=batch_size,
-                                         is_repeat=False,
-                                         binary_img=True,
-                                         is_crop=True,
-                                         reprocess=False,
-                                         num_classes=num_classes,
-                                         buffer_size=2048)
+        # A clerk writes the training logs to the TensorBoard.
+        dt_string = datetime.now().strftime("%d%m%Y_%H_%M_%S")
+        self.clerk = tf.summary.create_file_writer(os.path.join(training_dir, 'logs', name, dt_string))
 
-    supervisor = TrainingSupervisor(train_dataloader=dataloader_train,
-                                    validation_dataloader=None,
-                                    optimizer=optimizer,
-                                    loss_fn=loss_fn,
-                                    model=model,
-                                    save_freq=1000,
-                                    monitor='categorical_accuracy',
-                                    mode='max',
-                                    training_dir=training_dir,
-                                    name='Trainer_Supervisor')
+    @tf.function
+    def _train_step(self, x_batch, y_batch):
+        with tf.GradientTape() as tape:
+            logits = self.model(x_batch, training=True)
+            regularization_loss = self.model.losses
+            predict_loss = self.loss_fn(y_batch, logits)
+            total_loss = predict_loss + regularization_loss
 
-    supervisor.restore(weights_only=False, from_scout=True)
-    supervisor.train(epochs=epochs, steps_per_epoch=num_images // batch_size)
-    supervisor.export(model=model.backbone, export_dir=export_dir)
-    supervisor.mlflow_artifact(model=model.backbone,
-                               tensorboard_dir=training_dir,
-                               export_dir=export_dir)
+        grads = tape.gradient(total_loss, self.model.trainable_weights)
+        self.optimizer.apply_gradients(zip(grads, self.model.trainable_weights))
+        return logits, total_loss
 
-    # evaluate ...
-    eval_class = EvaluteObjects(tfrecord_file=tfrecord_file_eval,
-                                file_pairs=file_pair_eval,
-                                batch_size=batch_size)
-    metrics = eval_class.activate(model=model.backbone, embedding_size=embedding_size)
-    eval_class.mlflow_logs(dict_metrics=metrics)
+    @tf.function
+    def _update_metrics(self, **kwargs):
+        """
+        :param kwargs: some parameter we can change for future
+        :return: None (Update state of metrics)
+        """
+        # get parameter
+        labels = kwargs['labels']
+        logits = kwargs['logits']
+        loss = kwargs['loss']
 
+        self.metrics['categorical_accuracy'].update_state(labels, logits)
+        self.metrics['loss'].update_state(loss)
 
-def mlflow_run():
-    args_mlflow = parser_mlflow()
-    print("Options-Mlflow:")
-    for k, v in args_mlflow.items():
-        print(f"  {k}: {v}")
+    def _reset_metrics(self):
+        for key, metric in self.metrics.items():
+            metric.reset_states()
 
-    args_mlflow['model_name'] = None if not args_mlflow['model_name'] or args_mlflow['model_name'] == "None" else \
-        args_mlflow['model_name']
+    def _log_to_tensorboard_epoch(self):
+        epoch = int(self.schedule['epoch'])
+        epoch_train_loss = self.metrics['loss'].result()
+        epoch_train_accuracy = self.metrics['categorical_accuracy'].result()
 
-    if args_mlflow['tensorflow_autolog']:
-        mlflow.tensorflow.autolog()
-    if args_mlflow['mlflow_autolog']:
-        mlflow.autolog()
+        with self.clerk.as_default():
+            tf.summary.scalar("epoch_loss", epoch_train_loss, step=epoch)
+            tf.summary.scalar("epoch_accuracy", epoch_train_accuracy, step=epoch)
 
-    try:
-        exp_id = mlflow.create_experiment(name=args_mlflow['experiment_name'])
-    except Exception as e:
-        exp_id = mlflow.get_experiment_by_name(name=args_mlflow['experiment_name']).experiment_id
+        # Log to STDOUT.
+        print("\nTraining accuracy: {:.4f}, mean loss: {:.4f}".format(float(epoch_train_accuracy),
+                                                                      float(epoch_train_loss)))
 
-    with mlflow.start_run(experiment_id=exp_id, run_name=args_mlflow['model_name']) as run:
-        print("MLflow:")
-        print("  run_id:", run.info.run_id)
-        print("  experiment_id:", run.info.experiment_id)
-        mlflow.set_tag("version.mlflow", mlflow.__version__)
-        mlflow.set_tag("version.tensorflow", tf.__version__)
-        mlflow.set_tag("mlflow_autolog", args_mlflow['mlflow_autolog'])
-        mlflow.set_tag("tensorflow_autolog", args_mlflow['tensorflow_autolog'])
-        mlflow.set_tag("mlflow_custom_log", args_mlflow['mlflow_custom_log'])
-        mlflow.set_tag("Type of model", args_mlflow['model_name'])
-        mlflow.set_tag("Developer", args_mlflow['user_name'])
-        train(run, args_mlflow['model_name'], args_mlflow['mlflow_custom_log'])
+    def _log_to_tensorboard(self):
+        current_step = int(self.schedule['step'])
+        train_loss = self.metrics['loss'].result()
+        train_accuracy = self.metrics['categorical_accuracy'].result()
+        lr = self.optimizer._decayed_lr('float32')
 
+        with self.clerk.as_default():
+            tf.summary.scalar("loss", train_loss, step=current_step)
+            tf.summary.scalar("accuracy", train_accuracy, step=current_step)
+            tf.summary.scalar("learning rate", lr, step=current_step)
 
-if __name__ == '__main__':
-    set_env_vars()
-    mlflow_run()
+    def _checkpoint(self):
+        def _check_value(v1, v2, mode):
+            if (v1 < v2) & (mode == 'min'):
+                return True
+            elif (v1 > v2) & (mode == 'max'):
+                return True
+            else:
+                return False
+
+        # Get previous and current monitor values.
+        previous = self.schedule['monitor_value'].numpy()
+        current = self.monitor.result()
+
+        if previous == 0.0:
+            self.schedule['monitor_value'].assign(current)
+
+        if _check_value(current, previous, self.mode):
+            print("Monitor value improved from {:.4f} to {:.4f}.".format(previous, current))
+
+            # Update the schedule.
+            self.schedule['monitor_value'].assign(current)
+
+            # And save the model.
+            best_model_path = self.scout.save()
+            print("Best model found and saved: {}".format(best_model_path))
+        else:
+            print("Monitor value not improved: {:.4f}, latest: {:.4f}.".format(previous, current))
+
+        ckpt_path = self.manager.save()
+        self._reset_metrics()
+        print(f"Checkpoint saved at global step {self.schedule['step']}, to file: {ckpt_path}")
+
+    def restore(self, weights_only=False, from_scout=False):
+        """
+        Restore training process from previous training checkpoint.
+        Args:
+            weights_only: only restore the model weights. Default is False.
+            from_scout: restore from the checkpoint saved by model scout.
+        """
+        if from_scout:
+            # scout duoc dung de luu best model
+            latest_checkpoint = self.scout.latest_checkpoint
+        else:
+            # manager duoc dung de luu qua trình training
+            latest_checkpoint = self.manager.latest_checkpoint
+
+        if latest_checkpoint is not None:
+            print(f"Checkpoint found: {latest_checkpoint}")
+        else:
+            print(f"WARNING: Checkpoint not found. Model will be initialized from  scratch.")
+
+        print("Restoring ...")
+
+        if weights_only:
+            print("Only the model weights will be restored.")
+            checkpoint = tf.train.Checkpoint(model=self.model)
+            checkpoint.restore(checkpoint).expect_partial()  # hidden warning
+        else:
+            self.checkpoint_scout.restore(latest_checkpoint)
+            self.checkpoint_manager.restore(latest_checkpoint)
+
+        print("Checkpoint restored: {}".format(latest_checkpoint))
+
+    def train(self, epochs=train_config.epochs, steps_per_epoch=None):
+        if steps_per_epoch == None:
+            steps_per_epoch = self.train_dataloader.lenght // self.train_dataloader.batch_size
+        initial_epoch = self.schedule['epoch'].numpy()
+        global_step = self.schedule['step'].numpy()
+        initial_step = global_step % steps_per_epoch
+        print("Resume training from global step: {}, epoch: {}".format(global_step, initial_epoch))
+        print("Current step is: {}".format(initial_step))
+
+        for epoch in range(initial_epoch, epochs + 1):
+            print(f"\nEpoch {epoch}/{epochs}")
+
+            progress_bar = tqdm(total=steps_per_epoch, initial=initial_step,
+                                ascii="->", colour='#1cd41c')
+
+            for index in range(initial_step, steps_per_epoch):
+                data, labels = next(self.datatrain_generator)
+
+                logits, loss = self._train_step(x_batch=data, y_batch=labels)
+
+                # update metrics
+                self._update_metrics(labels=labels, logits=logits, loss=loss)
+
+                # update training schedule
+                self.schedule['step'].assign_add(1)
+
+                # update process bar
+                progress_bar.update(1)
+                progress_bar.set_postfix({
+                    "loss": "{:.4f}".format(loss.numpy()[0]),
+                    "accuracy": "{:.4f}".format(self.metrics['categorical_accuracy'].result().numpy())
+                })
+
+                # Log and checkpoint the model.
+                if int(self.schedule['step']) % self.save_freq == 0:
+                    self._log_to_tensorboard()
+                    self._checkpoint()
+                    # mình sẽ gọi evaluate ở đây.
+
+            # Mlflow logging
+            # self._mlflow_log()
+
+            # Save the last checkpoint.
+            self._log_to_tensorboard()
+            self._checkpoint()
+
+            # update epoch
+            self.schedule['epoch'].assign_add(1)
+
+            # reset iterate
+            self.datatrain_generator = iter(self.train_dataloader)
+
+            # clean up process bar
+            progress_bar.close()
+            initial_step = 0
+
+    def export(self, model, export_dir):
+        print("Saving model to {} ...".format(export_dir))
+        model.save(export_dir)
+        print("Model saved at: {}".format(export_dir))
+
+    def override_schedule(self):
+        raise NotImplementedError
+
+    def _mlflow_log(self):
+        # loss params
+        # nothing to see here
+
+        # metrics
+        mlflow.log_metric('loss', self.metrics['loss'].result())
+        mlflow.log_metric('accuracy', self.metrics['categorical_accuracy'].result())
+
+    def mlflow_artifact(self, model, tensorboard_dir, export_dir):
+        # write model as json file
+        with open("model.json", "w") as f:
+            f.write(model.to_json())
+        mlflow.log_artifact("model.json", artifact_path='tf-model-summary')
+        mlflow.log_artifacts(tensorboard_dir, artifact_path='tf-tensorboard')
+        mlflow.tensorflow.log_model(tf_saved_model_dir=export_dir,
+                                    tf_signature_def_key="serving_default",
+                                    tf_meta_graph_tags="serve",
+                                    artifact_path='tf-backbone')

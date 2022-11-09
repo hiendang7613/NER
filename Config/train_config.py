@@ -16,10 +16,16 @@ embedding_size = 512
 
 batch_size = 32
 
-epochs = 10
 
-input_shape = 160
+input_shape = (160, 160, 3)
 
+
+
+# trainer
+trainer_name = 'Trainer'
+checkpoint_steps_num = 1000
 training_dir = r'./Tensorboard'
-
 export_dir = r'./Model'
+monitor = 'categorical_accuracy'
+mode = 'max'
+epochs = 10
