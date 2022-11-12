@@ -95,22 +95,11 @@ class EnamexReader(DataReader):
                 sent_tokenized_ids = self.subword_tokenizer.encode(tokens.tolist(), add_special_tokens=False)
 
                 onedoc_token_ids.extend(sent_tokenized_ids)
-<<<<<<< HEAD
-                labels.append(sen_labels)
-                pass
-
-                labels = np.concatenate([np.resize(sen_labels,(len(self.entity_type),sen_labels.shape[1])) for sen_labels in labels], axis=1)
-                    
-=======
-
                 onedoc_labels.append(sen_label)
                 pass
 
-            for i in range(len(onedoc_labels)):
-                onedoc_labels[i].resize((onedoc_labels[-1].shape[0], onedoc_labels[i].shape[1]))
-            onedoc_labels = np.concatenate(onedoc_labels, axis=1)
-
->>>>>>> fdcf5e54b5f1e68ce6b0841add9dbfb41fc843c2
+                onedoc_labels = np.concatenate([np.resize(sen_label,(len(self.entity_type),sen_label.shape[1])) for sen_label in onedoc_labels], axis=1)
+                    
             self.doc_token_ids.append(onedoc_token_ids)
             self.doc_labels.append(onedoc_labels)
         pass
