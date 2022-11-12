@@ -6,6 +6,7 @@ from Config import train_config, mlflow_config
 import mlflow_log as mll
 
 
+
 def create_teachers(self):
     teacher_list = []
     for corpus in self.corpus_list:
@@ -57,6 +58,17 @@ def train(mlrun):
         'head_type': 'head_type',
         # **'input_shape', 'embedding_size', 'num_classes'
     }
+
+    modelConfig = {
+        'backbone_type': 'BiLSTM',
+        'input_shape' : (width, height, chanels)
+        'output_embedding_size' : output_embedding_size # backbone output
+        'embedding_type' :'phobert'
+        'embedding_size' : embedding_size # backbone intput embedding
+        'head_type' : head_type,
+        'num_classes' : num_classes
+    }'''
+    
     model = ModelFactory.getModel(modelConfig)
     model.build(input_shape=input_shape)
     model.summary()
