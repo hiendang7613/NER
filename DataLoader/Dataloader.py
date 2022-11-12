@@ -29,6 +29,8 @@ class Dataloader(object):
                 for k in range(doc_labels.shape[0]):
                     new_doc_labels[new_pos[k]] = doc_labels[k]
                 self.doc_labels.append(new_doc_labels)
+        
+        self.dataset = tf.data.Dataset.from_tensor_slices([self.doc_token_ids])
 
     def getDataset(self):
         dataSet

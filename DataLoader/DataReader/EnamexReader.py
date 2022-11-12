@@ -33,7 +33,7 @@ class EnamexReader(DataReader):
     def ParseAllDocs(self):
         for document in self.documents:
             onedoc_token_ids = []
-            labels = None
+            labels = []
             sentences = self.word_tokenizer(document)  # eg. Tôi là sinh_viên trường đại_học KHTN.
 
             # Add CLS token
@@ -95,15 +95,11 @@ class EnamexReader(DataReader):
                 sent_tokenized_ids = self.subword_tokenizer.encode(tokens.tolist(), add_special_tokens=False)
 
                 onedoc_token_ids.extend(sent_tokenized_ids)
-
-                if labels is not None:
-                    labels.resize((sen_labels.shape[0], labels.shape[1]))
-                    labels.extend(sen_labels, axis=1)
-
-                else:
-                    labels = sen_labels
+                labels.append(sen_labels)
                 pass
 
+                labels = np.concatenate([np.resize(sen_labels,(len(self.entity_type),sen_labels.shape[1])) for sen_labels in labels], axis=1)
+                    
             self.doc_token_ids.append(onedoc_token_ids)
             self.doc_labels.append(labels)
         pass
