@@ -25,12 +25,12 @@ class ModelFactory(object):
         embedding_config = {}.update((k, config[k]) for k in ['embedding_type', 'embedding_size'])
         head_config = {}.update((k, config[k]) for k in ['head_type', 'num_classes'])
 
-        embedding = EmbeddingFactory.getEmbedding(backbone_config)
+        embedding, subword_tokenizer = EmbeddingFactory.getEmbedding(embedding_config)
         backbone_config['embedding'] = embedding
-        backbone = BackboneFactory.getBackbone(embedding_config)
+        backbone = BackboneFactory.getBackbone(backbone_config)
         head = HeadFactory.getHead(head_config)
         model = MyModel(backbone, head)
-        return model
+        return model, subword_tokenizer
 
 
 # if __name__ == '__main__':

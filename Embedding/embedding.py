@@ -1,72 +1,95 @@
 from transformers import AutoModel, AutoTokenizer
+import tensorflow as tf
+
 
 class EmbeddingFactory(object):
     def __init__(self):
         super(EmbeddingFactory, self).__init__()
         pass
 
+
+
+    @staticmethod
+    def getTokenizer(self, config):
+        model_name = self.getRawModelName(config['embedding_type'])
+
+        if 'ETNLP' in model_name:
+            embedding = tf.saved_model.load('../Pretrained/Embeddings/'+model_name)
+        else:
+            subword_tokenizer = AutoTokenizer.from_pretrained(model_name)
+
+        return subword_tokenizer
+
     @staticmethod
     def getEmbedding(self, config):
-        model_name = ''
+        model_name = self.getRawModelName(config['embedding_type'])
 
-        # Vietnamese
-        if config['embedding_type'] == 'bert-vi':
-            model_name = "vinai/phobert-base"
-        elif config['embedding_type'] == 'gpt-vi':
-            model_name = 'VietAI/gpt-neo-1.3B-vietnamese-news'
-        elif config['embedding_type'] == 'trans-align-vi':
-            model_name = 'Helsinki-NLP/opus-mt-vi-en'
-        elif config['embedding_type'] == 'xlm-roberta-vi':
-            model_name = 'M-CLIP/XLM-Roberta-Large-Vit-B-16Plus'
-        elif config['embedding_type'] == 't5-vi':
-            model_name = 'VietAI/vit5-base'
-        elif config['embedding_type'] == 'gpt-vi':
-            model_name = 'VietAI/gpt-neo-1.3B-vietnamese-news'
-        elif config['embedding_type'] == 'gpt-vi':
-            model_name = 'VietAI/gpt-neo-1.3B-vietnamese-news'
-        elif config['embedding_type'] == 'gpt-vi':
-            model_name = 'VietAI/gpt-neo-1.3B-vietnamese-news'
-        elif config['embedding_type'] == 'gpt-vi':
-            model_name = 'VietAI/gpt-neo-1.3B-vietnamese-news'
-        elif config['embedding_type'] == 'gpt-vi':
-            model_name = 'VietAI/gpt-neo-1.3B-vietnamese-news'
-        elif config['embedding_type'] == 'gpt-vi':
-            model_name = 'VietAI/gpt-neo-1.3B-vietnamese-news'
-
-        # Vietnamese
-        if config['embedding_type'] == 'bert':
-            model_name = "bert-base-uncased"
-        elif config['embedding_type'] == 'gpt-vi':
-            model_name = 'VietAI/gpt-neo-1.3B-vietnamese-news'
-        elif config['embedding_type'] == 'trans-align-vi':
-            model_name = 'Helsinki-NLP/opus-mt-vi-en'
-        elif config['embedding_type'] == 'xlm-roberta-vi':
-            model_name = 'M-CLIP/XLM-Roberta-Large-Vit-B-16Plus'
-        elif config['embedding_type'] == 't5-vi':
-            model_name = 'VietAI/vit5-base'
-        elif config['embedding_type'] == 'gpt-vi':
-            model_name = 'VietAI/gpt-neo-1.3B-vietnamese-news'
-        elif config['embedding_type'] == 'gpt-vi':
-            model_name = 'VietAI/gpt-neo-1.3B-vietnamese-news'
-        elif config['embedding_type'] == 'gpt-vi':
-            model_name = 'VietAI/gpt-neo-1.3B-vietnamese-news'
-        elif config['embedding_type'] == 'gpt-vi':
-            model_name = 'VietAI/gpt-neo-1.3B-vietnamese-news'
-        elif config['embedding_type'] == 'gpt-vi':
-            model_name = 'VietAI/gpt-neo-1.3B-vietnamese-news'
-        elif config['embedding_type'] == 'gpt-vi':
-            model_name = 'VietAI/gpt-neo-1.3B-vietnamese-news'
+        if 'ETNLP' in model_name:
+            embedding = tf.saved_model.load('../Pretrained/Embeddings/'+model_name)
         else:
-            print('Embedding type not match!')
+            embedding = AutoModel.from_pretrained(model_name)
 
-
-
-
-        embedding = AutoModel.from_pretrained(model_name)
-        subword_tokenizer = AutoTokenizer.from_pretrained(model_name)
         return embedding
 
 
+    @staticmethod
+    def getRawModelName(self, embedding_type):
+
+        # Vietnamese
+        if embedding_type == 'bert-vi':
+            model_name = "vinai/phobert-base"
+        elif embedding_type == 'gpt-vi':
+            model_name = 'VietAI/gpt-neo-1.3B-vietnamese-news'
+        elif embedding_type == 'trans-align-vi':
+            model_name = 'Helsinki-NLP/opus-mt-vi-en'
+        elif embedding_type == 'xlm-roberta-vi':
+            model_name = 'M-CLIP/XLM-Roberta-Large-Vit-B-16Plus'
+        elif embedding_type == 't5-vi':
+            model_name = 'VietAI/vit5-base'
+
+        # ETNLP - Pretrained Embedding
+        # Training data: Wiki in Vietnamese -- sentences: 6,685,621 -- tokenized words: 114,997,587
+        elif embedding_type == 'w2v-vi':
+            model_name = 'W2V_ner_ETNLP'
+        elif embedding_type == 'w2v-c2v-vi':
+            model_name = 'W2V_C2V_ner_ETNLP'
+        elif embedding_type == 'fasttext-vi':
+            model_name = 'FastText_ner_ETNLP'
+        elif embedding_type == 'elmo-vi':
+            model_name = 'ELMO_ner_ETNLP'
+        elif embedding_type == 'w2v-c2v-fasttext-elmo-bert-vi':
+            model_name = 'MULTI_W_F_B_E_ETNLP'
+
+
+
+        elif embedding_type == 'gpt-vi':
+            model_name = 'VietAI/gpt-neo-1.3B-vietnamese-news'
+        elif embedding_type == 'gpt-vi':
+            model_name = 'VietAI/gpt-neo-1.3B-vietnamese-news'
+        elif embedding_type == 'gpt-vi':
+            model_name = 'VietAI/gpt-neo-1.3B-vietnamese-news'
+        elif embedding_type == 'gpt-vi':
+            model_name = 'VietAI/gpt-neo-1.3B-vietnamese-news'
+        elif embedding_type == 'gpt-vi':
+            model_name = 'VietAI/gpt-neo-1.3B-vietnamese-news'
+        elif embedding_type == 'gpt-vi':
+            model_name = 'VietAI/gpt-neo-1.3B-vietnamese-news'
+
+        # English
+        elif embedding_type == 'bert':
+            model_name = "bert-base-uncased"
+
+
+        elif embedding_type == 'gpt-vi':
+            model_name = 'VietAI/gpt-neo-1.3B-vietnamese-news'
+        elif embedding_type == 'gpt-vi':
+            model_name = 'VietAI/gpt-neo-1.3B-vietnamese-news'
+        elif embedding_type == 'gpt-vi':
+            model_name = 'VietAI/gpt-neo-1.3B-vietnamese-news'
+        elif embedding_type == 'gpt-vi':
+            model_name = 'VietAI/gpt-neo-1.3B-vietnamese-news'
+        else:
+            print('Embedding type not match!')
 # class Embedding(tf.keras.layers.Layer):
 #     def __init__(self, **kwargs):
 #         super(Head, self).__init__(**kwargs)
@@ -140,23 +163,3 @@ class EmbeddingFactory(object):
 
 
 
-# if __name__ == '__main__':
-#     """
-#         - ResNet_v1_101
-#         - ResNet_v1_34
-#         - Resnet_tf
-#         - Vgg16
-#     """
-#     input_shape = 250
-#     model = MyModel(type_backbone='Resnet_tf',
-#                     input_shape=input_shape,
-#                     header=ArcHead(num_classes=1000, kernel_regularizer=tf.keras.regularizers.l2(5e-4)))
-#     model.build(input_shape=(None, input_shape, input_shape, 3))
-#     print(model.summary())
-#
-#     x = tf.keras.layers.Input(shape=(input_shape, input_shape, 3))
-#     out = model(x, training=True)
-#
-#     print(f"input: {x}")
-#     print(f"output: {out}")
-#     print("DONE ...")

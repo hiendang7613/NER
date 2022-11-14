@@ -43,8 +43,6 @@ class Dataloader(object):
                     new_doc_labels[new_pos[k]] = doc_labels[k]
                 self.doc_labels.append(new_doc_labels)
         
-        self.dataset = tf.data.Dataset.from_tensor_slices([self.doc_token_ids])
-
         self.dataset = tf.data.Dataset.from_tensor_slices((self.doc_token_ids, self.doc_labels))
         pass
 

@@ -1,3 +1,4 @@
+from DataLoader.DataReader.EnamexReader import EnamexReader
 import tensorflow as tf
 from model import ModelFactory
 from trainer import Trainer
@@ -49,6 +50,8 @@ def train(mlrun):
     embedding_size = train_config.embedding_size
     input_shape = train_config.input_shape
 
+    # DataReader
+    dataReader = EnamexReader()
 
     # dataloader
 

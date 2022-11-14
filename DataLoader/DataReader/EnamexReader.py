@@ -2,7 +2,7 @@ import py_vncorenlp
 import numpy as np
 
 class EnamexReader(DataReader):
-    def __init__(self, word_tokenizer, subword_tokenizer, cls_token='<s>', sep_token='</s>'):
+    def __init__(self, word_tokenizer, subword_tokenizer=None, cls_token='<s>', sep_token='</s>', token_to_ids=None):
         super().__init__()
         self.doc_token_ids = []
         self.doc_labels = []
@@ -11,6 +11,7 @@ class EnamexReader(DataReader):
 
         self.word_tokenizer = word_tokenizer
         self.subword_tokenizer = subword_tokenizer
+        self.token_to_ids = token_to_ids
         self.cls_token = cls_token
         self.sep_token = sep_token
         pass
