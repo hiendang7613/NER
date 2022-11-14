@@ -1,9 +1,13 @@
-modelConfig = {
-    'backbone_type': 'BiLSTM',
-    'input_shape': (width, height, chanels)
-    'output_embedding_size': output_embedding_size  # backbone output
-    'embedding_type': 'phobert'
-                      'embedding_size': embedding_size  # backbone intput embedding
-'head_type': head_type,
-'num_classes': num_classes
-}'''
+
+## Embedding
+embedding_type = 'phobert'
+# embedding_size = 768 # phobert default
+
+## Backbone
+backbone_type = 'BiLSTM'
+input_shape = 512
+output_embedding_size = 256
+
+## Head
+head_type = 'crf'
+num_classes = num_classes

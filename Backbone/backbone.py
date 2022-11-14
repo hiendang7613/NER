@@ -24,7 +24,7 @@ class BackboneFactory(object):
         'embedding_size'
     '''
     @staticmethod
-    def getBackbone(self, backbone_type, embedding, input_shape=train_config.input_shape, embedding_size=train_config.embedding_size):
+    def getBackbone(self, backbone_type, embedding, input_shape, embedding_size):
         input_tensor = tf.keras.layers.Input(shape=input_shape)
         x = embedding(input_tensor)
         if backbone_type == 'BiLSTM':

@@ -19,30 +19,16 @@ class ModelFactory(object):
         super(ModelFactory, self).__init__()
         pass
 
-    '''
-    ## getModel parameters
-    modelConfig = {
-        'backbone_type': backbone_type,
-        'input_shape' : (width, height, chanels) 
-        'output_embedding_size' : output_embedding_size # backbone output
-        'embedding_type' :'phobert'
-        'embedding_size' : embedding_size # backbone intput embedding 
-        'head_type' : head_type,
-        'num_classes' : num_classes
-    }'''
     @staticmethod
     def getModel(self, config):
-        backboneConfig={}
-        backboneConfig.update((k, config[k]) for k in ['backbone_type', 'input_shape', 'output_embedding_size'])
-        embeddingConfig={}
-        embeddingConfig.update((k, config[k]) for k in ['embedding_type', 'embedding_size'])
-        headConfig={}
-        headConfig.update((k, config[k]) for k in ['head_type', 'num_classes'])
+        backbone_config = {}.update((k, config[k]) for k in ['backbone_type', 'input_shape', 'output_embedding_size'])
+        embedding_config = {}.update((k, config[k]) for k in ['embedding_type', 'embedding_size'])
+        head_config = {}.update((k, config[k]) for k in ['head_type', 'num_classes'])
 
-        embedding = EmbeddingFactory.getEmbedding(**embeddingConfig)
-        backboneConfig['embedding'] = embedding
-        backbone = BackboneFactory.getBackbone(**backboneConfig)
-        head = HeadFactory.getHead(**headConfig)
+        embedding = EmbeddingFactory.getEmbedding(backbone_config)
+        backbone_config['embedding'] = embedding
+        backbone = BackboneFactory.getBackbone(embedding_config)
+        head = HeadFactory.getHead(head_config)
         model = MyModel(backbone, head)
         return model
 
