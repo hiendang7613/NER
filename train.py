@@ -7,6 +7,11 @@ from Config import train_config, mlflow_config
 import mlflow_log as mll
 
 
+import Config.Model.BiLSTMv1 as config
+from Embedding.embedding import EmbeddingFactory
+from DataLoader.Dataloader import Dataloader
+import py_vncorenlp
+
 
 def create_teachers(self):
     teacher_list = []
@@ -50,11 +55,17 @@ def train(mlrun):
     embedding_size = train_config.embedding_size
     input_shape = train_config.input_shape
 
+    # Tokenizer
+    py_vncorenlp.download_model(save_dir='./')
+    tokenizer = py_vncorenlp.VnCoreNLP(annotators=["wseg"], save_dir='./')
+    embedding_tokenizer = EmbeddingFactory.getTokenizer(config)
+
     # DataReader
-    dataReader = EnamexReader()
-
+    dataReader = EnamexReader(
+        word_tokenizer=tokenizer,
+        subword_tokenizer=embedding_tokenizer)
     # dataloader
-
+    dataloader = Dataloader([dataReader])
 
     modelConfig = {
         'backbone_type': 'backbone_type',
@@ -70,9 +81,9 @@ def train(mlrun):
         'embedding_size' : embedding_size # backbone intput embedding
         'head_type' : head_type,
         'num_classes' : num_classes
-    }'''
+    }
     
-    model = ModelFactory.getModel(modelConfig)
+    model = ModelFactory.getModel(config)
     model.build(input_shape=input_shape)
     model.summary()
 
