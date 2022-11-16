@@ -17,6 +17,13 @@ class EmbeddingFactory(object):
             embedding = tf.saved_model.load('../Pretrained/Embeddings/'+model_name)
         else:
             subword_tokenizer = AutoTokenizer.from_pretrained(model_name)
+            new_tokens = [
+                '<ENAMEX_TYPE="PERSON">',
+                '<ENAMEX_TYPE="LOCATION">',
+                '<ENAMEX_TYPE="ORGANIZATION">',
+                '</ENAMEX>',
+            ]
+            subword_tokenizer.add_tokens(new_tokens)
 
         return subword_tokenizer
 

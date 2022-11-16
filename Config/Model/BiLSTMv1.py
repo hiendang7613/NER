@@ -10,4 +10,8 @@ output_embedding_size = 256
 
 ## Head
 head_type = 'crf'
-num_classes = num_classes
+num_classes = 3
+
+## Loss function
+loss_func_type = 'crf_log_likelihood'
+

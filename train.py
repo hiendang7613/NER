@@ -12,6 +12,7 @@ from Embedding.embedding import EmbeddingFactory
 from DataLoader.Dataloader import Dataloader
 import py_vncorenlp
 
+from LossFunction.LossFunctionFactory import LossFunctionFactory
 
 def create_teachers(self):
     teacher_list = []
@@ -48,12 +49,9 @@ def trainning():
             embedding.tokenizer = AutoTokenizer.from_pretrained(name, use_fast = False)
     return x
 
-def train(mlrun):
+def train():
 
     # get hyper-parameter
-    num_classes = train_config.num_classes
-    embedding_size = train_config.embedding_size
-    input_shape = train_config.input_shape
 
     # Tokenizer
     py_vncorenlp.download_model(save_dir='./')
@@ -65,42 +63,29 @@ def train(mlrun):
         word_tokenizer=tokenizer,
         subword_tokenizer=embedding_tokenizer)
     # dataloader
-    dataloader = Dataloader([dataReader])
+    dataloader = Dataloader([dataReader]).getDataset()
 
-    modelConfig = {
-        'backbone_type': 'backbone_type',
-        'head_type': 'head_type',
-        # **'input_shape', 'embedding_size', 'num_classes'
-    }
-
-    modelConfig = {
-        'backbone_type': 'BiLSTM',
-        'input_shape' : (width, height, chanels)
-        'output_embedding_size' : output_embedding_size # backbone output
-        'embedding_type' :'phobert'
-        'embedding_size' : embedding_size # backbone intput embedding
-        'head_type' : head_type,
-        'num_classes' : num_classes
-    }
-    
     model = ModelFactory.getModel(config)
-    model.build(input_shape=input_shape)
-    model.summary()
 
     # init loss function
-    loss_fn = CosfaceLoss(margin=0.5, scale=64, n_classes=num_classes)
+    loss_fn = LossFunctionFactory.getLossFunction(config)
     optimizer = tf.keras.optimizers.Adam(0.001, amsgrad=True, epsilon=0.001)
 
+    model.compile(loss=loss_fn, optimizer=optimizer, metrics=['accuracy'])
 
-    trainer = Trainer(train_dataloader=dataloader_train,
-                        validation_dataloader=None,
-                        optimizer=optimizer,
-                        loss_fn=loss_fn,
-                        model=model)
-
-    trainer.restore(weights_only=False, from_scout=True)
-    trainer.train()
-    trainer.export(model=model.backbone)
+    model.fit(dataloader,
+        steps_per_epoch=dataloader.getNumRecords()//train_config.batch_size,
+        epochs=train_config.epochs)
+        # callbacks=callbacks)
+    # trainer = Trainer(train_dataloader=dataloader,
+    #                     validation_dataloader=None,
+    #                     optimizer=optimizer,
+    #                     loss_fn=loss_fn,
+    #                     model=model)
+    #
+    # trainer.restore(weights_only=False, from_scout=True)
+    # trainer.train()
+    # trainer.export(model=model.backbone)
     # supervisor.mlflow_artifact(model=model.backbone,
     #                            tensorboard_dir=training_dir,
     #                            export_dir=export_dir)
@@ -113,8 +98,6 @@ def train(mlrun):
     # eval_class.mlflow_logs(dict_metrics=metrics)
 
 
-
-
 if __name__ == '__main__':
-    mlrun = mll.mllog_run()
-    train(mlrun)
+    # mlrun = mll.mllog_run()
+    train()#mlrun)

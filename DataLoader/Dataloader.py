@@ -25,6 +25,9 @@ class Dataloader(object):
     def getDataset(self):
         return self.dataset
 
+    def getNumRecords(self):
+        return len(self.doc_token_ids)
+
     def load(self):
         # read data
         for reader in self.dataReaders:

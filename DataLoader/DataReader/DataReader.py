@@ -1,4 +1,6 @@
 import numpy as np
+from bs4 import BeautifulSoup
+import re
 
 class DataReader(object):
     def __init__(self):
@@ -18,5 +20,11 @@ class DataReader(object):
 
     def getLabels(self) -> np.ndarray:
         pass
+
+    def preprocessing(self, text):
+        text = BeautifulSoup(text, 'html.parser').get_text()
+        text = re.sub(r'https?://\S+|www\.\S+', '', text)
+        return text
+
 
 

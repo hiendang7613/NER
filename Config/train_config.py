@@ -1,23 +1,28 @@
 from pathlib import Path
+import tensorflow as tf
 
+# data
 projects_path = Path().parent.resolve()
+data_path = projects_path / 'Dataset' / 'raw_tfrecords' / 'lfw.tfrecords'
+text_max_len = 512
 
-tfrecord_file = projects_path / 'Dataset' / 'raw_tfrecords' / 'lfw.tfrecords'
 
-tfrecord_file_eval = projects_path / 'Dataset' / 'raw_tfrecords' / 'lfw.tfrecords'
-
-file_pair_eval = projects_path / 'Dataset' / 'raw_tfrecords' / 'lfw_pairs.txt'
-
-num_classes = 8335
-
-num_images = 666750
-
-embedding_size = 512
-
+# train dataloader
+epochs = 10
+is_shuffle = False
+buffer_size = 10240
+shuffle_seed = 43
+is_repeat = True
 batch_size = 32
+batch_drop_remainder=True
+is_prefetch=True
+is_prefetch_buffle=tf.data.experimental.AUTOTUNE
 
+# preprocessing
+is_preprocessing = True
 
-input_shape = (160, 160, 3)
+# data augmentation
+is_augmentation = False
 
 
 

@@ -19,6 +19,7 @@ class EnamexReader(DataReader):
     def readFile(self, file_path):
         with open(file_path, 'r') as f:
             document = f.read()
+            document = self.preprocessing(document)
             self.append(document)
         pass
 
